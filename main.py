@@ -227,7 +227,7 @@ class Chess:
         self.stopwatch.set_text(s_mins + ':' + s_secs)
 
     def tick_stopwatch(self):
-        if self.is_stopwatch_running:
+        if self.is_stopwatch_running and not self.chess_board.is_checkmate():
             self.stopwatch_secs -= 1
             self.update_stopwatch_text()
 
@@ -350,7 +350,7 @@ def main():
 
     chess = Chess(size, (60, 60), (0, 0), promote=dia)
 
-    game_over_lbl = UILabel((0, 0, dialog_w, dialog_h // 2 - 10), text='Шах и мат! Игра закончена',
+    game_over_lbl = UILabel((0, 0, dialog_w, dialog_h // 2 - 10), text='Шах и мат, атеисты! Игра закончена',
                             bg_color=pygame.Color('white'))
     play_again_btn = UIButton((20, dialog_h // 2, dialog_w - 40, dialog_h // 2 - 10), chess.reset, text='Начать заново')
     game_over = UIGroup((dialog_x, dialog_y, dialog_w, dialog_h), bg_color=pygame.Color('white'))
@@ -403,16 +403,17 @@ def main():
 
         is_checkmate = chess.chess_board.is_checkmate()
 
-        if has_interacted and not is_checkmate:
+        if has_interacted or is_checkmate:
             screen.fill(pygame.Color('white'))
             chess.render(screen)
+
+            if is_checkmate:
+                game_over.show()
+                game_over.render(screen)
+
             pygame.display.flip()
 
-        if is_checkmate:
-            game_over.show()
-            game_over.render(screen)
-            pygame.display.flip()
-        else:
+        if not is_checkmate:
             game_over.hide()
 
     clock.tick(10)
