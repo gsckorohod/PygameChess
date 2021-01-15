@@ -1,5 +1,6 @@
-import pygame
 from copy import deepcopy
+
+import pygame
 
 from board import Board, LMB, RMB
 
@@ -194,6 +195,9 @@ class Rook(Castleable):
         out += 'M' if self.check_if_moved() else 'N'
         return out
 
+    def raw_char(self):
+        return self.char()[0]
+
     def can_move(self, board, row1, col1):
         row, col = self.get_pos(board)
 
@@ -236,6 +240,9 @@ class Pawn(Figure):
         out = 'P'
         out += 'W' if self.get_color() == WHITE else 'B'
         return out
+
+    def raw_char(self):
+        return self.char()[0]
 
     def can_move(self, board, row1, col1):
         row, col = self.get_pos(board)
@@ -286,6 +293,9 @@ class Knight(Figure):
         out += 'W' if self.get_color() == WHITE else 'B'
         return out
 
+    def raw_char(self):
+        return self.char()[0]
+
     def can_move(self, board, row1, col1):
         row, col = self.get_pos(board)
 
@@ -311,6 +321,9 @@ class King(Castleable):
         out += 'W' if self.get_color() == WHITE else 'B'
         out += 'M' if self.check_if_moved() else 'N'
         return out
+
+    def raw_char(self):
+        return self.char()[0]
 
     def can_move(self, board, row1, col1):
         row, col = self.get_pos(board)
@@ -338,6 +351,9 @@ class Queen(Figure):
         out = 'Q'
         out += 'W' if self.get_color() == WHITE else 'B'
         return out
+
+    def raw_char(self):
+        return self.char()[0]
 
     def can_move(self, board, row1, col1):
         row, col = self.get_pos(board)
@@ -384,6 +400,9 @@ class Bishop(Figure):
         out = 'B'
         out += 'W' if self.get_color() == WHITE else 'B'
         return out
+
+    def raw_char(self):
+        return self.char()[0]
 
     def can_move(self, board, row1, col1):
         row, col = self.get_pos(board)
@@ -526,6 +545,9 @@ class ChessBoard(Board):
                     self.board[r][c] = fig
         self.history = []
         self.history_pos = -1
+
+    def get_board(self):
+        return self.board
 
     def read_from_file(self, filename, empty_char='-'):
         new_board = read_board_from_file(filename, self.pieces_chars, self.colors_chars, empty_char)
@@ -680,7 +702,7 @@ class ChessBoard(Board):
         self.board[row][col] = new_piece(self.color)
         return True
 
-    def move_piece(self, row, col, row1, col1):
+    def move_piece(self, row, col, row1, col1, autopromote=False):
         """Переместить фигуру из точки (row, col) в точку (row1, col1).
         Если перемещение возможно, метод выполнит его и вернёт True.
         Если нет --- вернёт False"""
@@ -703,7 +725,11 @@ class ChessBoard(Board):
                 piece.set_has_moved()
             elif isinstance(piece, Pawn):
                 if piece.can_promote(self):
-                    promote_char = self.promotion_func()
+                    if autopromote:
+                        promote_char = 'Q'
+                    else:
+                        promote_char = self.promotion_func()
+
                     self.promote(row1, col1, promote_char)
 
             new = {
@@ -740,6 +766,17 @@ class ChessBoard(Board):
         else:
             return None
 
+    def make_move(self, row, col, row1, col1, autopromote=False):
+        history_obj = self.move_piece(row, col, row1, col1, autopromote)
+        if isinstance(history_obj, HistoryObject):
+            if self.history_pos != len(self.history) - 1:
+                self.history = []
+                self.history_pos = -1
+
+            self.history.append(history_obj)
+            self.history_pos += 1
+            return history_obj
+
     def on_click(self, cell, button=LMB):
         if button == LMB:
             self.set_selected_cells([cell])
@@ -747,15 +784,9 @@ class ChessBoard(Board):
             if self.get_selected_cells():
                 selected_col, selected_row = self.get_selected_cells()[0]
                 col, row = cell
-                history_obj = self.move_piece(selected_row, selected_col, row, col)
-                if isinstance(history_obj, HistoryObject):
-                    if self.history_pos != len(self.history) - 1:
-                        self.history = []
-                        self.history_pos = -1
+                history_obj = self.make_move(selected_row, selected_col, row, col)
+                return history_obj
 
-                    self.history.append(history_obj)
-                    self.history_pos += 1
-                    return history_obj
         return None
 
     def get_click(self, mouse_pos, button=LMB):
@@ -774,12 +805,18 @@ class ChessBoard(Board):
             val = obj[key]
             self.board[row][col] = val
 
-    def undo(self):
+    def undo(self, do_pop=False):
         if self.history:
+            if do_pop:
+                self.history_pos = len(self.history) - 1
+
             if self.history_pos >= 0:
                 self.get_from_history(True)
             if self.history_pos > 0:
                 self.history_pos -= 1
+
+            if do_pop:
+                self.history.pop()
 
     def redo(self):
         if self.history:

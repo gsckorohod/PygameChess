@@ -424,7 +424,6 @@ class UISwitch(UIButton):
         self.off_img = off_img
 
     def on_click(self):
-        super(UISwitch, self).on_click()
         self.state = not self.state
         if self.state:
             self.set_color(self.on_color)
@@ -434,6 +433,7 @@ class UISwitch(UIButton):
             self.set_color(self.off_color)
             if self.off_img:
                 self.set_img(self.off_img)
+        super(UISwitch, self).on_click()
 
     def get_state(self):
         return self.state

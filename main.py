@@ -1,8 +1,12 @@
-import pygame
 from tkinter import Tk
 from tkinter import filedialog as fd
-from chess import *
-from gui import *
+
+import pygame
+
+import ai
+import chess
+import gui
+from chess import RMB, LMB
 
 BOARD_IMG = 'data/images/board.jpg'
 FRAME_COLOR = pygame.Color('#ead7c6')
@@ -18,39 +22,43 @@ FLIP_IMG = pygame.image.load(BUTTON_IMG_PATH + 'flip.png')
 RESET_IMG = pygame.image.load(BUTTON_IMG_PATH + 'reset.png')
 SAVE_IMG = pygame.image.load(BUTTON_IMG_PATH + 'save.png')
 OPEN_IMG = pygame.image.load(BUTTON_IMG_PATH + 'open.png')
+BOT_ON_IMG = pygame.image.load(BUTTON_IMG_PATH + 'bot_on.png')
+BOT_OFF_IMG = pygame.image.load(BUTTON_IMG_PATH + 'bot_off.png')
+
+AI_DEPTH = 2
 
 
 class PromoteDialog:
-    def __init__(self, rect, target, btn_space=10, title_h=20, color=WHITE):
+    def __init__(self, rect, target, btn_space=10, title_h=20, color=chess.WHITE):
         self.x, self.y, self.w, self.h = self.rect = rect
         self.btn_space = btn_space
         self.title_h = title_h
 
         self.target = target
 
-        figures = list(PIECES_CHARS.keys())
+        figures = list(chess.PIECES_CHARS.keys())
         figures.remove('K')
         self.figures = figures
         self.output = 'Q'
 
         self.btn_w = (self.w - self.btn_space * (len(self.figures) + 1)) // len(self.figures)
 
-        self.gui_group = UIGroup(rect)
+        self.gui_group = gui.UIGroup(rect)
 
-        self.title_lbl = UILabel((0, 0, self.w, self.title_h), 'Выберите фигуру:')
+        self.title_lbl = gui.UILabel((0, 0, self.w, self.title_h), 'Выберите фигуру:')
 
         for i, fig in enumerate(self.figures):
             x = self.btn_space + (self.btn_w + self.btn_space) * i
             y = self.btn_space + self.title_h
 
-            piece = PIECES_CHARS[fig](color)
-            img = get_piece_img(piece)
+            piece = chess.PIECES_CHARS[fig](color)
+            img = chess.get_piece_img(piece)
             del piece
 
             pygame.draw.rect(img, pygame.Color('black'), (3, 3, img.get_width() - 6, img.get_height() - 6), 9)
 
-            btn = UIButton((x, y, self.btn_w, self.btn_w), None, img=img, text=fig,
-                           font_size=1, text_align=(ALIGN_LEFT, ALIGN_TOP))
+            btn = gui.UIButton((x, y, self.btn_w, self.btn_w), None, img=img, text=fig,
+                               font_size=1, text_align=(gui.ALIGN_LEFT, gui.ALIGN_TOP))
             self.gui_group.add_element(btn)
 
         self.gui_group.add_element(self.title_lbl)
@@ -70,7 +78,7 @@ class PromoteDialog:
                     running = False
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     btn = self.gui_group.get_click(event.pos)
-                    if isinstance(btn, UIButton):
+                    if isinstance(btn, gui.UIButton):
                         self.output = btn.text[0].upper()
                         running = False
                     has_interacted = True
@@ -111,47 +119,58 @@ class Chess:
 
         self.frame_color = frame_color
 
-        self.chess_board = ChessBoard(self.chess_size, promote)
+        self.chess_board = chess.ChessBoard(self.chess_size, promote)
         ui_x, ui_y = 20, 20
         ui_w, ui_h = self.w - chess_side - 40, self.h - 40
 
-        self.lbl_status = UILabel((10, 10, ui_w - 20, 50), bg_color=pygame.Color('white'), text='Ход белых')
-        self.stopwatch = UILcdDisplay((10, 10 + (self.lbl_status.y + self.lbl_status.h) + 10,
-                                       ui_w - 20, 50))
+        self.lbl_status = gui.UILabel((10, 10, ui_w - 20, 50), bg_color=pygame.Color('white'), text='Ход белых')
+        self.stopwatch = gui.UILcdDisplay((10, 10 + (self.lbl_status.y + self.lbl_status.h) + 10,
+                                           ui_w - 20, 50))
 
         btn_w, btn_h = 50, 50
-        self.play_btn = UIButton((10, 10 + (self.stopwatch.y + self.stopwatch.h) + 10, btn_w, btn_h),
-                                 self.unpause_stopwatch, img=PLAY_IMG)
-        self.pause_btn = UIButton((self.play_btn.x + self.play_btn.w + 20,
-                                   10 + (self.stopwatch.y + self.stopwatch.h) + 10, btn_w, btn_h),
-                                  self.pause_stopwatch, img=PAUSE_IMG)
+        self.play_btn = gui.UIButton((10, 10 + (self.stopwatch.y + self.stopwatch.h) + 10, btn_w, btn_h),
+                                     self.unpause_stopwatch, img=PLAY_IMG)
+        self.pause_btn = gui.UIButton((self.play_btn.x + self.play_btn.w + 20,
+                                       10 + (self.stopwatch.y + self.stopwatch.h) + 10, btn_w, btn_h),
+                                      self.pause_stopwatch, img=PAUSE_IMG)
 
-        self.undo_btn = UIButton((10, 10 + (self.play_btn.y + self.play_btn.h) + 30,
-                                  btn_w, btn_h), self.undo, img=UNDO_IMG)
+        self.undo_btn = gui.UIButton((10, 10 + (self.play_btn.y + self.play_btn.h) + 30,
+                                      btn_w, btn_h), self.undo, img=UNDO_IMG)
 
-        self.redo_btn = UIButton((self.undo_btn.x + self.undo_btn.w + 20,
-                                  10 + (self.play_btn.y + self.play_btn.h) + 30,
-                                  btn_w, btn_h), self.redo, img=REDO_IMG)
+        self.redo_btn = gui.UIButton((self.undo_btn.x + self.undo_btn.w + 20,
+                                      10 + (self.play_btn.y + self.play_btn.h) + 30,
+                                      btn_w, btn_h), self.redo, img=REDO_IMG)
 
-        self.flip_btn = UIButton((self.redo_btn.x + self.redo_btn.w + 20,
-                                  10 + (self.play_btn.y + self.play_btn.h) + 30,
-                                  btn_w, btn_h), self.chess_board.flip, img=FLIP_IMG)
+        self.flip_btn = gui.UIButton((self.redo_btn.x + self.redo_btn.w + 20,
+                                      10 + (self.play_btn.y + self.play_btn.h) + 30,
+                                      btn_w, btn_h), self.chess_board.flip, img=FLIP_IMG)
 
-        self.reset_btn = UIButton((10, 10 + (self.undo_btn.y + self.undo_btn.h) + 10,
-                                   btn_w, btn_h), self.reset, img=RESET_IMG)
+        self.reset_btn = gui.UIButton((10, 10 + (self.undo_btn.y + self.undo_btn.h) + 10,
+                                       btn_w, btn_h), self.reset, img=RESET_IMG)
 
-        self.save_btn = UIButton((self.reset_btn.x + self.reset_btn.w + 20,
-                                  10 + (self.undo_btn.y + self.undo_btn.h) + 10,
-                                  btn_w, btn_h), self.write_to_file, img=SAVE_IMG)
+        self.save_btn = gui.UIButton((self.reset_btn.x + self.reset_btn.w + 20,
+                                      10 + (self.undo_btn.y + self.undo_btn.h) + 10,
+                                      btn_w, btn_h), self.write_to_file, img=SAVE_IMG)
 
-        self.load_btn = UIButton((self.save_btn.x + self.save_btn.w + 20,
-                                  10 + (self.undo_btn.y + self.undo_btn.h) + 10,
-                                  btn_w, btn_h), self.read_from_file, img=OPEN_IMG)
+        self.load_btn = gui.UIButton((self.save_btn.x + self.save_btn.w + 20,
+                                      10 + (self.undo_btn.y + self.undo_btn.h) + 10,
+                                      btn_w, btn_h), self.read_from_file, img=OPEN_IMG)
 
-        self.turn_history_box = UIListVertical((10, 10 + (self.reset_btn.y + self.reset_btn.h) + 30,
-                                                ui_w - 20, ui_h - (self.reset_btn.y + self.reset_btn.h + 50)))
+        self.ai_enabled_switch = gui.UISwitch((10, 10 + (self.reset_btn.y + self.reset_btn.h) + 30,
+                                               btn_w, btn_h), action=self.switch_ai,
+                                              on_img=BOT_ON_IMG, off_img=BOT_OFF_IMG)
 
-        self.gui_group = UIGroup((ui_x, ui_y, ui_w, ui_h))
+        self.ai_enabled_lbl = gui.UILabel((self.ai_enabled_switch.x + self.ai_enabled_switch.w + 20,
+                                           self.ai_enabled_switch.y,
+                                           ui_w - self.ai_enabled_switch.w - 40,
+                                           btn_h), 'ИИ выключен')
+
+        self.turn_history_box = gui.UIListVertical((10,
+                                                    10 + (self.ai_enabled_switch.y + self.ai_enabled_switch.h) + 30,
+                                                    ui_w - 20,
+                                                    ui_h - (self.ai_enabled_switch.y + self.ai_enabled_switch.h + 50)))
+
+        self.gui_group = gui.UIGroup((ui_x, ui_y, ui_w, ui_h))
 
         self.gui_group.add_element(self.stopwatch)
         self.gui_group.add_element(self.lbl_status)
@@ -164,17 +183,28 @@ class Chess:
         self.gui_group.add_element(self.reset_btn)
         self.gui_group.add_element(self.save_btn)
         self.gui_group.add_element(self.load_btn)
+        self.gui_group.add_element(self.ai_enabled_switch)
+        self.gui_group.add_element(self.ai_enabled_lbl)
 
         if isinstance(frame_image, pygame.Surface):
             self.img = pygame.transform.smoothscale(frame_image, self.size)
         else:
             self.img = self.get_frame_img()
 
+        self.is_ai_enabled = False
+
         self.turn_len = 120
         self.stopwatch_secs = self.turn_len
         self.is_stopwatch_running = True
 
         self.update_stopwatch_text()
+
+    def switch_ai(self):
+        self.is_ai_enabled = self.ai_enabled_switch.get_state()
+        if self.is_ai_enabled:
+            self.ai_enabled_lbl.set_text('ИИ включен')
+        else:
+            self.ai_enabled_lbl.set_text('ИИ выключен')
 
     def write_to_file(self):
         file_name = fd.asksaveasfilename(filetypes=[("Txt files", "*.txt")])
@@ -191,6 +221,8 @@ class Chess:
             except Exception as error:
                 print('Error reading file:', error)
                 self.reset()
+
+        self.turn_history_box.clear()
 
     def undo(self):
         self.chess_board.undo()
@@ -246,8 +278,8 @@ class Chess:
         flipped = self.chess_board.get_flipped()
 
         for i in range(8):
-            row_letter_img = font.render(get_row_letter(i, is_flipped=flipped), True, LETTER_COLOR)
-            col_letter_img = font.render(get_col_letter(i, is_flipped=flipped), True, LETTER_COLOR)
+            row_letter_img = font.render(chess.get_row_letter(i, is_flipped=flipped), True, LETTER_COLOR)
+            col_letter_img = font.render(chess.get_col_letter(i, is_flipped=flipped), True, LETTER_COLOR)
 
             x_off = (self.x_offset - row_letter_img.get_width()) // 2
             y_off = (self.y_offset - col_letter_img.get_height()) // 2
@@ -268,13 +300,13 @@ class Chess:
         offset = 4
         pygame.draw.rect(img, LETTER_COLOR, (cx + offset, cy + offset,
                                              chess_side - 2 * offset, chess_side - 2 * offset), 5)
-        pygame.draw.rect(img, BLACK_CELL_COLOR, (self.chess_x - 2, self.chess_y - 2,
-                                                 self.chess_w, self.chess_h), 3)
+        pygame.draw.rect(img, chess.BLACK_CELL_COLOR, (self.chess_x - 2, self.chess_y - 2,
+                                                       self.chess_w, self.chess_h), 3)
 
         return img
 
     def get_surface(self):
-        board_img = self.chess_board.get_surface(draw_chess)
+        board_img = self.chess_board.get_surface(chess.draw_chess)
 
         frame = self.get_frame_img()
 
@@ -293,9 +325,48 @@ class Chess:
     def get_mouse_up(self, mouse_pos):
         self.gui_group.get_mouse_up(mouse_pos)
 
+    def make_ai_move(self):
+        is_maximising = self.chess_board.color == chess.WHITE
+
+        best_move = ai.minimax_root(AI_DEPTH, self.chess_board, is_maximising)
+
+        history_obj = self.chess_board.make_move(*best_move, True)
+
+        self.update_game(history_obj)
+
+        self.stopwatch_secs = self.turn_len
+        self.update_stopwatch_text()
+
     def change_turn(self):
-        self.chess_board.color = opponent(self.chess_board.color)
-        if self.chess_board.color == WHITE:
+        self.chess_board.color = chess.opponent(self.chess_board.color)
+        if self.chess_board.color == chess.WHITE:
+            self.lbl_status.set_text('Ход белых')
+        else:
+            self.lbl_status.set_text('Ход чёрных')
+
+    def update_game(self, history_obj):
+        if isinstance(history_obj, chess.HistoryObject):
+            self.stopwatch_secs = self.turn_len
+            self.update_stopwatch_text()
+
+            c1, c2, *_ = history_obj.old.keys()
+            f1, f2 = history_obj.old[c1], history_obj.old[c2]
+
+            if isinstance(f1, (chess.King, chess.Queen, chess.Rook, chess.Pawn, chess.Knight, chess.Bishop)):
+                char = f1.char()[0]
+
+                s_pos1 = chess.to_chess_notation(c1).lower()
+                s_pos2 = chess.to_chess_notation(c2).lower()
+
+                s_color = 'Белые' if history_obj.color == chess.WHITE else 'Чёрные'
+
+                text = s_color + ': ' + char + ' ' + s_pos1 + ' - ' + s_pos2
+
+                new_lbl = gui.UILabel((0, 0, 100, 30))
+                self.turn_history_box.add_element(new_lbl, True)
+                new_lbl.set_text(text)
+
+        if self.chess_board.color == chess.WHITE:
             self.lbl_status.set_text('Ход белых')
         else:
             self.lbl_status.set_text('Ход чёрных')
@@ -308,31 +379,8 @@ class Chess:
 
         move = self.chess_board.get_click(mpos, button)
 
-        if isinstance(move, HistoryObject):
-            self.stopwatch_secs = self.turn_len
-            self.update_stopwatch_text()
-
-            c1, c2, *_ = move.old.keys()
-            f1, f2 = move.old[c1], move.old[c2]
-
-            if isinstance(f1, (King, Queen, Rook, Pawn, Knight, Bishop)):
-                char = f1.char()[0]
-
-                s_pos1 = to_chess_notation(c1).lower()
-                s_pos2 = to_chess_notation(c2).lower()
-
-                s_color = 'Белые' if move.color == WHITE else 'Чёрные'
-
-                text = s_color + ': ' + char + ' ' + s_pos1 + ' - ' + s_pos2
-
-                new_lbl = UILabel((0, 0, 100, 30))
-                self.turn_history_box.add_element(new_lbl, True)
-                new_lbl.set_text(text)
-
-        if self.chess_board.color == WHITE:
-            self.lbl_status.set_text('Ход белых')
-        else:
-            self.lbl_status.set_text('Ход чёрных')
+        self.update_game(move)
+        return move
 
 
 def main():
@@ -348,17 +396,18 @@ def main():
 
     dia = PromoteDialog((dialog_x, dialog_y, dialog_w, dialog_h), screen, 10, 40)
 
-    chess = Chess(size, (60, 60), (0, 0), promote=dia)
+    chessb = Chess(size, (60, 60), (0, 0), promote=dia)
 
-    game_over_lbl = UILabel((0, 0, dialog_w, dialog_h // 2 - 10), text='Шах и мат, атеисты! Игра закончена',
-                            bg_color=pygame.Color('white'))
-    play_again_btn = UIButton((20, dialog_h // 2, dialog_w - 40, dialog_h // 2 - 10), chess.reset, text='Начать заново')
-    game_over = UIGroup((dialog_x, dialog_y, dialog_w, dialog_h), bg_color=pygame.Color('white'))
+    game_over_lbl = gui.UILabel((0, 0, dialog_w, dialog_h // 2 - 10), text='Игра закончена',
+                                bg_color=pygame.Color('white'))
+    play_again_btn = gui.UIButton((20, dialog_h // 2, dialog_w - 40, dialog_h // 2 - 10), chessb.reset,
+                                  text='Начать заново')
+    game_over = gui.UIGroup((dialog_x, dialog_y, dialog_w, dialog_h), bg_color=pygame.Color('white'))
     game_over.add_element(game_over_lbl)
     game_over.add_element(play_again_btn)
     game_over.hide()
 
-    chess.render(screen)
+    chessb.render(screen)
     pygame.display.flip()
 
     clock = pygame.time.Clock()
@@ -372,6 +421,7 @@ def main():
 
     while running:
         has_interacted = False
+        is_checkmate = chessb.chess_board.is_checkmate()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -380,35 +430,48 @@ def main():
                 left, _, right = pygame.mouse.get_pressed(3)
 
                 btn = LMB if left else RMB
-                chess.get_click(event.pos, btn)
 
-                game_over.get_click(mpos)
+                if is_checkmate:
+                    game_over.get_click(mpos)
+                else:
+                    if chessb.get_click(event.pos, btn) and chessb.is_ai_enabled:
+                        chessb.render(screen)
+                        pygame.display.update((chessb.x, chessb.y, chessb.w, chessb.h))
+
+                        if not chessb.chess_board.is_checkmate():
+                            chessb.make_ai_move()
 
                 has_interacted = True
             if event.type == pygame.MOUSEMOTION:
                 mpos = pygame.mouse.get_pos()
 
-                chess.get_mouse_over(mpos)
+                chessb.get_mouse_over(mpos)
                 game_over.get_mouse_over(mpos)
 
                 has_interacted = True
             if event.type == pygame.MOUSEBUTTONUP:
-                chess.get_mouse_up(mpos)
+                chessb.get_mouse_up(mpos)
                 game_over.get_mouse_up(mpos)
 
                 has_interacted = True
             if event.type == STOPWATCH_TICK:
-                chess.tick_stopwatch()
+                chessb.tick_stopwatch()
                 has_interacted = True
-
-        is_checkmate = chess.chess_board.is_checkmate()
 
         if has_interacted or is_checkmate:
             screen.fill(pygame.Color('white'))
-            chess.render(screen)
+            chessb.render(screen)
 
             if is_checkmate:
                 game_over.show()
+
+                text = 'Игра закончена! '
+                if chessb.chess_board.color == chess.WHITE:
+                    text += 'Победили чёрные'
+                else:
+                    text += 'Победили белые'
+
+                game_over_lbl.set_text(text)
                 game_over.render(screen)
 
             pygame.display.flip()
