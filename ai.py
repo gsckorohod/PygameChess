@@ -185,7 +185,7 @@ def minimax(depth, game, alpha, beta, is_maximising_player):
             if beta <= alpha:
                 return bestMove
 
-            return bestMove
+        return bestMove
     else:
         bestMove = 9999
 
