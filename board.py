@@ -59,12 +59,14 @@ class Board:
 
         for y in range(self.width):
             for x in range(self.width):
-                r_pos = (r_x, r_y, rw, rh) = (x * self.col_size + self.left, y * self.row_size + self.top,
-                                              self.col_size, self.row_size)
+                r_x, r_y, rw, rh = (x * self.col_size + self.left, y * self.row_size + self.top,
+                                    self.col_size, self.row_size)
 
                 if self.is_board_flipped:
                     r_y = (self.height - 1) * self.row_size - r_y
                     r_x = (self.width - 1) * self.col_size - r_x
+
+                r_pos = (r_x, r_y, rw, rh)
 
                 if draw_func:
                     new_surface = draw_func(r_pos, (x, y), self)
