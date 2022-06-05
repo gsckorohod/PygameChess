@@ -512,8 +512,8 @@ class ChessBoard(Board):
         super().__init__(8, 8, board_size=size)
 
         self.board[0] = [
-            Rook(WHITE), Knight(WHITE), Bishop(WHITE), Queen(WHITE),
-            King(WHITE), Bishop(WHITE), Knight(WHITE), Rook(WHITE)
+            Rook(WHITE), Knight(WHITE), Bishop(WHITE), King(WHITE),
+            Queen(WHITE), Bishop(WHITE), Knight(WHITE), Rook(WHITE)
         ]
         self.board[1] = [
             Pawn(WHITE), Pawn(WHITE), Pawn(WHITE), Pawn(WHITE),
@@ -524,8 +524,8 @@ class ChessBoard(Board):
             Pawn(BLACK), Pawn(BLACK), Pawn(BLACK), Pawn(BLACK)
         ]
         self.board[7] = [
-            Rook(BLACK), Knight(BLACK), Bishop(BLACK), Queen(BLACK),
-            King(BLACK), Bishop(BLACK), Knight(BLACK), Rook(BLACK)
+            Rook(BLACK), Knight(BLACK), Bishop(BLACK), King(BLACK),
+            Queen(BLACK), Bishop(BLACK), Knight(BLACK), Rook(BLACK)
         ]
 
         self.color = WHITE
