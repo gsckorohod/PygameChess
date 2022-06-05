@@ -326,7 +326,12 @@ class Chess:
         self.gui_group.get_mouse_up(mouse_pos)
 
     def make_ai_move(self):
-        is_maximising = self.chess_board.color == chess.WHITE
+        if self.chess_board.color == chess.WHITE:
+            is_maximising = True
+            print('AI Playing as White!')
+        else:
+            is_maximising = False
+            print('AI Playing as Black!')
 
         best_move = ai.minimax_root(AI_DEPTH, self.chess_board, is_maximising)
 
@@ -380,6 +385,7 @@ class Chess:
         move = self.chess_board.get_click(mpos, button)
 
         self.update_game(move)
+
         return move
 
 
@@ -437,7 +443,6 @@ def main():
                     if chessb.get_click(event.pos, btn) and chessb.is_ai_enabled:
                         chessb.render(screen)
                         pygame.display.update((chessb.x, chessb.y, chessb.w, chessb.h))
-
                         if not chessb.chess_board.is_checkmate():
                             chessb.make_ai_move()
 

@@ -447,9 +447,16 @@ def read_board_from_file(filename, pieces_chars=None, color_chars=None, empty_ch
         color_chars = COLOR_CHARS
 
     file = open(filename, 'r')
+    lines = file.readlines()
     out = []
 
-    for line in file.readlines()[:8]:
+    move_char = lines[0][0]
+    if move_char == 'B':
+        curr_move = BLACK
+    else:
+        curr_move = WHITE
+
+    for line in lines[1:9]:
         out.append([])
         ln = [x for x in line.split() if x]
 
@@ -481,16 +488,16 @@ def read_board_from_file(filename, pieces_chars=None, color_chars=None, empty_ch
     while len(out) < 8:
         out.append([None for _ in range(8)])
 
-    return out
+    return out, curr_move
 
 
-def write_board_to_file(filename, board, pieces_chars=None, color_chars=None, empty_char='-'):
+def write_board_to_file(filename, board, curr_move=WHITE, pieces_chars=None, color_chars=None, empty_char='-'):
     if pieces_chars is None:
         pieces_chars = PIECES_CHARS
     if color_chars is None:
         color_chars = COLOR_CHARS
 
-    lines = []
+    lines = ['B\n' if curr_move == BLACK else 'W\n']
     for line in board:
         line = [x.char() if isinstance(x, (Pawn, Bishop, Knight, Rook, Queen, King)) else empty_char for x in line]
         lines.append(' '.join(line) + '\n')
@@ -549,12 +556,18 @@ class ChessBoard(Board):
     def get_board(self):
         return self.board
 
+    def set_color(self, color):
+        if color not in [WHITE, BLACK]:
+            raise ValueError('Illegal color value')
+        self.color = color
+
     def read_from_file(self, filename, empty_char='-'):
-        new_board = read_board_from_file(filename, self.pieces_chars, self.colors_chars, empty_char)
+        new_board, curr_move = read_board_from_file(filename, self.pieces_chars, self.colors_chars, empty_char)
         self.set_board(new_board)
+        self.set_color(curr_move)
 
     def write_to_file(self, filename, empty_char='-'):
-        write_board_to_file(filename, self.board, self.pieces_chars, self.colors_chars, empty_char)
+        write_board_to_file(filename, self.board, self.color, self.pieces_chars, self.colors_chars, empty_char)
 
     def current_player_color(self):
         return self.color

@@ -1,5 +1,7 @@
 from chess import BLACK, WHITE
 
+INF = 10 ** 9
+
 PAWN_EVAL_WHITE = [
     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
     [5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0, 5.0],
@@ -163,61 +165,58 @@ def evaluate_board(board):
     return totalEvaluation
 
 
-def minimax(depth, game, alpha, beta, is_maximising_player):
-    if depth == 0:
-        return -1 * evaluate_board(game.get_board())
+def minimax_eval(depth_left, game, alpha, beta, is_maximising_player):
+    if depth_left == 0:
+        return evaluate_board(game.get_board())
+        # if is_maximising_player:
+        #     return evaluate_board(game.get_board())
+        # else:
+        #     return evaluate_board(game.get_board()) * -1
 
     new_game_moves = game.moves_without_check()
 
     if is_maximising_player:
-        bestMove = -9999
-
-        for i, move in enumerate(new_game_moves):
+        for move in new_game_moves:
             game.make_move(*move, True)
-
-            minim = minimax(depth - 1, game, alpha, beta, not is_maximising_player)
-
-            bestMove = max(bestMove, minim)
-
+            score = minimax_eval(depth_left - 1, game, alpha, beta, not is_maximising_player)
             game.undo(True)
 
-            alpha = max(alpha, bestMove)
-            if beta <= alpha:
-                return bestMove
-
-        return bestMove
+            if score >= beta:
+                return beta
+            if score > alpha:
+                alpha = score
+        return alpha
     else:
-        bestMove = 9999
-
-        for i, move in enumerate(new_game_moves):
+        for move in new_game_moves:
             game.make_move(*move, True)
-
-            minim = minimax(depth - 1, game, alpha, beta, not is_maximising_player)
-
-            bestMove = min(bestMove, minim)
-
+            score = minimax_eval(depth_left - 1, game, alpha, beta, not is_maximising_player)
             game.undo(True)
 
-            beta = min(beta, bestMove)
-            if beta <= alpha:
-                return bestMove
+            if score <= alpha:
+                return alpha
+            if score < beta:
+                beta = score
+        return beta
 
-        return bestMove
 
-
-def minimax_root(depth, game, is_maximising_player):
+def minimax_root(depth_left, game, is_maximising_player):
     new_game_moves = game.moves_without_check()
     best_move_found = new_game_moves[0]
-    best_move = -9999
 
-    for i, move in enumerate(new_game_moves):
+    if is_maximising_player:
+        best_move = -INF
+    else:
+        best_move = INF
+
+    for move in new_game_moves:
         game.make_move(*move, True)
-
-        value = minimax(depth - 1, game, -10000, 10000, not is_maximising_player)
-
+        value = minimax_eval(depth_left - 1, game, -INF, INF, not is_maximising_player)
         game.undo()
 
-        if value >= best_move:
+        if value > best_move and is_maximising_player:
+            best_move = value
+            best_move_found = move
+        elif value < best_move and not is_maximising_player:
             best_move = value
             best_move_found = move
 
